@@ -1,0 +1,73 @@
+options {
+  STATIC = false;
+  IGNORE_CASE = true;
+}
+
+PARSER_BEGIN(SimpleCalculator)
+package uk.ac.nulondon.parser;
+
+import java.io.StringReader;
+import static uk.ac.nulondon.parser.BinaryOperation.Operator.*;
+import static uk.ac.nulondon.parser.UnaryOperation.Operator.*;
+public class SimpleCalculator {
+    public SimpleCalculator(String script ){
+        this (new StringReader(script));
+    }
+
+    public static Element parseScript(String script) throws ParseException {
+        return new SimpleCalculator(script).parse();
+    }
+
+}}
+
+}
+
+PARSER_END(SimpleCalculator)
+
+SKIP : {
+  " " | "\t" | "\r" | "\n"
+}
+
+TOKEN : {
+   <SQRT: "SQRT" >
+ | <NUMBER: (["0"-"9"])+ ( "." (["0"-"9"])+ )? >
+ | <VARIABLE: ["A"-"Z"] >
+}
+
+Expr parse() :
+{Expr result;}
+{
+  result = AdditiveExpression()
+  <EOF>
+  {return result;}
+}
+
+Expr AdditiveExpression() :
+{Expr left, right;}
+{
+  left = MultiplicativeExpression()
+      ( "+" right = MultiplicativeExpression() {left = new BinaryOperation(ADD, left, right);}
+      | "-" right = MultiplicativeExpression() {left = new BinaryOperation(SUBTRACT, left, right);}
+      )*
+  { return left; }
+}
+
+Expr MultiplicativeExpression() :
+{Expr left, right;}
+{
+  left = Factor()
+     ( "*" right = Factor() {left = new BinaryOperation(MULTIPLY, left, right);}
+     | "/" right = Factor() {left = new BinaryOperation(DIVIDE, left, right);}
+     )*
+  { return left; }
+}
+
+Expr Factor() :
+{Token t; Expr e;}
+{
+    t = <NUMBER>                            {return new Number(t.image);}
+  | t = <VARIABLE>                          {return new Variable(t.image);}
+  | "(" e = AdditiveExpression() ")"        {return e;}
+  | <SQRT> "(" e = AdditiveExpression() ")" {return new UnaryOperation(SQUARE_ROOT, e);}
+  | "-" e = Factor()                        {return new UnaryOperation(NEGATE, e);}
+}
